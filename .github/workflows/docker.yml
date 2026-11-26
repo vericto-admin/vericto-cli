@@ -19,7 +19,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }} # vericto/vericto-cli
+  IMAGE_NAME: ${{ github.repository }} # vericto/cli
 
 concurrency:
   group: docker-${{ github.ref }}
@@ -87,7 +87,7 @@ jobs:
 
       # Build provenance for the pushed image (same mechanism release.yml uses for the
       # binaries), stored in GHCR next to it. Verify with
-      # `gh attestation verify oci://ghcr.io/vericto/vericto-cli:<tag> --repo vericto/vericto-cli`.
+      # `gh attestation verify oci://ghcr.io/vericto/cli:<tag> --repo vericto/cli`.
       - name: Attest
         # Nothing to attest when nothing was pushed (branch run).
         if: startsWith(github.ref, 'refs/tags/')

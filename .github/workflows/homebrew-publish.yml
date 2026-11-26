@@ -2,7 +2,7 @@
 #
 # Why a custom job instead of the built-in `publish-jobs = ["homebrew"]`? Same
 # reason as npm-publish.yml: the token that can write to the tap
-# (HOMEBREW_TAP_TOKEN) lives in the `prod` GitHub Environment, which is
+# (the `vericto-publisher` App credentials) live in the `prod` GitHub Environment, which is
 # required-reviewer gated because this is a public repo. The built-in job runs
 # without an `environment:`, so it could only read a repository secret, and a
 # repository secret is readable by any workflow in the repo. A reusable
@@ -31,9 +31,10 @@ jobs:
   homebrew-publish:
     runs-on: ubuntu-22.04
     # Gates the publish behind the `prod` environment (required reviewer) and
-    # makes the environment-scoped HOMEBREW_TAP_TOKEN available to this job.
+    # makes the environment-scoped App credentials available to this job.
     environment: prod
-    # The workflow's GITHUB_TOKEN is not used to push (HOMEBREW_TAP_TOKEN is).
+    # The workflow's GITHUB_TOKEN cannot reach the tap: the push uses an
+    # installation token of the `vericto-publisher` App, minted below.
     # Granted by the caller (dist-workspace.toml, github-custom-job-permissions).
     permissions:
       contents: read
@@ -41,6 +42,17 @@ jobs:
       PLAN: ${{ inputs.plan }}
       TAP: vericto/homebrew-tap
     steps:
+      # Scoped to the tap alone: the token cannot write to any other repository,
+      # and it expires an hour after the run. The App's private key does not
+      # expire, which is why this replaced a fine-grained PAT (366-day cap).
+      - name: Mint an installation token for the tap
+        id: app-token
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          app-id: ${{ secrets.PUBLISHER_APP_ID }}
+          private-key: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: homebrew-tap
       # The token is not persisted in the checkout (the next step runs brew,
       # which is not given it); the final `git push` passes it explicitly.
       # It is used for the fetch too, so this also works while the tap is
@@ -48,7 +60,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ env.TAP }}
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: tap
           persist-credentials: false
       # Into its own directory, not the tap checkout: only the .rb is copied over.
@@ -109,6 +121,6 @@ jobs:
             git add "Formula/${filename}"
             git diff --cached --quiet || git commit -m "${filename%.rb} ${version}"
           done
-          git push "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${TAP}.git" HEAD:main
+          git push "https://x-access-token:${TAP_TOKEN}@github.com/${TAP}.git" HEAD:main
         env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAP_TOKEN: ${{ steps.app-token.outputs.token }}
