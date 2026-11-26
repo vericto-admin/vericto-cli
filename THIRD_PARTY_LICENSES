@@ -83,7 +83,7 @@ Name, version and declared license (SPDX expression) of each crate:
   - either 1.19.0: MIT OR Apache-2.0
   - equivalent 1.0.2: Apache-2.0 OR MIT
   - fnv 1.0.7: Apache-2.0 / MIT
-  - form_urlencoded 1.2.2: MIT OR Apache-2.0
+  - form_urlencoded 1.2.3: MIT OR Apache-2.0
   - futures-channel 0.3.32: MIT OR Apache-2.0
   - futures-core 0.3.32: MIT OR Apache-2.0
   - futures-io 0.3.32: MIT OR Apache-2.0
@@ -209,7 +209,7 @@ Name, version and declared license (SPDX expression) of each crate:
   - unicode-ident 1.0.24: (MIT OR Apache-2.0) AND Unicode-3.0
   - unsafe-libyaml-norway 0.2.15: MIT
   - untrusted 0.9.0: ISC
-  - url 2.5.8: MIT OR Apache-2.0
+  - url 2.5.9: MIT OR Apache-2.0
   - utf8_iter 1.0.4: Apache-2.0 OR MIT
   - utf8parse 0.2.2: Apache-2.0 OR MIT
   - vericto-engine 5.1.0: AGPL-3.0-only
@@ -829,7 +829,7 @@ Used by:
   - either 1.19.0 (LICENSE-APACHE)
   - equivalent 1.0.2 (LICENSE-APACHE)
   - fnv 1.0.7 (LICENSE-APACHE)
-  - form_urlencoded 1.2.2 (LICENSE-APACHE)
+  - form_urlencoded 1.2.3 (LICENSE-APACHE)
   - hashbrown 0.17.1 (LICENSE-APACHE)
   - heck 0.5.0 (LICENSE-APACHE)
   - httparse 1.10.1 (LICENSE-APACHE)
@@ -854,7 +854,7 @@ Used by:
   - sqlparser_derive 0.6.0 (LICENSE.TXT)
   - stable_deref_trait 1.2.1 (LICENSE-APACHE)
   - stacker 0.1.25 (LICENSE-APACHE)
-  - url 2.5.8 (LICENSE-APACHE)
+  - url 2.5.9 (LICENSE-APACHE)
 
                               Apache License
                         Version 2.0, January 2004
@@ -2540,7 +2540,7 @@ DEALINGS IN THE SOFTWARE.
 
 ================================================================================
 Used by:
-  - form_urlencoded 1.2.2 (LICENSE-MIT)
+  - form_urlencoded 1.2.3 (LICENSE-MIT)
 
 Copyright (c) 2013-2016 The rust-url developers
 
@@ -3925,7 +3925,7 @@ ICU 1.8.1 to ICU 57.1 © 1995-2016 International Business Machines Corporation a
 Used by:
   - idna 1.1.0 (LICENSE-MIT)
   - percent-encoding 2.3.2 (LICENSE-MIT)
-  - url 2.5.8 (LICENSE-MIT)
+  - url 2.5.9 (LICENSE-MIT)
 
 Copyright (c) 2013-2025 The rust-url developers
 
