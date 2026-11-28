@@ -15,6 +15,12 @@
 //     aborts the install: nothing is extracted and the download is deleted.
 //   - Downloads, including every redirect, must be https:// (plain http:// only
 //     for a loopback host, which the tests use).
+//   - The child Windows PowerShell that unpacks a .zip does not inherit
+//     PSModulePath, so it uses the Microsoft.PowerShell.Archive it ships with
+//     rather than PowerShell 7's (see windowsPowerShellEnv below).
+//   - After unpacking, every binary the package declares must exist. An
+//     extraction that writes nothing is reported here instead of surfacing
+//     later as a bare "spawnSync ... ENOENT" from the bin shim.
 const {
   createWriteStream,
   existsSync,
@@ -114,6 +120,30 @@ function isAllowedDownloadUrl(urlString) {
   if (url.protocol !== "http:") return false;
   const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
   return host === "localhost" || host === "::1" || /^127\./.test(host);
+}
+
+// The environment for the child Windows PowerShell 5.1 that unpacks a .zip.
+//
+// When npm runs from PowerShell 7 - the default shell on Windows CI, and a
+// common interactive choice - PSModulePath lists PowerShell 7's module folders
+// ahead of Windows PowerShell's own, and an intermediate process (node) passes
+// it on unchanged. Windows PowerShell then resolves Expand-Archive to
+// PowerShell 7's Microsoft.PowerShell.Archive. From version 1.2.7 of that
+// module (PowerShell 7.6.10) the only extraction call is
+// ZipFileExtensions::ExtractToDirectory($zip, $dir, $overwriteFiles), a
+// three-argument overload that exists on .NET Core / .NET 5+ but not on the
+// .NET Framework that Windows PowerShell runs on. The call fails, the failure
+// is not fatal to `-Command`, so powershell.exe still exits 0 having extracted
+// nothing. Dropping the variable makes Windows PowerShell build its default
+// module path and load the module it ships with.
+//
+// src/config.rs and windows/test/package.test.js drop it for the same reason.
+function windowsPowerShellEnv() {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toUpperCase() === "PSMODULEPATH") delete env[key];
+  }
+  return env;
 }
 
 // SHA-256 of a file, as lowercase hex.
@@ -329,17 +359,21 @@ class Package {
                 if (this.platform.artifactName.includes("windows")) {
                   // Windows does not have "unzip" by default on many installations, instead
                   // we use Expand-Archive from powershell
-                  result = spawnSync("powershell.exe", [
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-Command",
-                    `& {
+                  result = spawnSync(
+                    "powershell.exe",
+                    [
+                      "-NoProfile",
+                      "-NonInteractive",
+                      "-Command",
+                      `& {
                         param([string]$LiteralPath, [string]$DestinationPath)
                         Expand-Archive -LiteralPath $LiteralPath -DestinationPath $DestinationPath -Force
                     }`,
-                    tempFile,
-                    this.installDirectory,
-                  ]);
+                      tempFile,
+                      this.installDirectory,
+                    ],
+                    { env: windowsPowerShellEnv() },
+                  );
                 } else {
                   result = spawnSync("unzip", [
                     "-q",
@@ -370,6 +404,16 @@ class Package {
         });
       })
       .then(() => {
+        // Expand-Archive and tar can both exit 0 without having written the
+        // binaries: an archive laid out differently than expected, or an
+        // extraction that fails in a way that is not fatal to the tool. Report
+        // that here rather than claim an install that did not happen and let
+        // the bin shim fail later with a bare "spawnSync ... ENOENT".
+        if (!this.exists()) {
+          throw new Error(
+            `${this.filename} did not unpack ${Object.values(this.binaries).join(", ")} into ${this.installDirectory}.`,
+          );
+        }
         if (!suppressLogs) {
           console.error(`${this.name} has been installed!`);
         }

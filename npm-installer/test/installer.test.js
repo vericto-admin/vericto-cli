@@ -261,6 +261,12 @@ function makeWindowsZip(dir) {
     { env: { ...process.env, SRC: content, DST: zip }, encoding: "utf8" },
   );
   assert.equal(r.status, 0, r.stderr);
+  // Compress-Archive can exit 0 having written an archive that does not carry
+  // the binary at its root. Fail on the fixture itself here, so that a broken
+  // fixture does not read as a broken installer.
+  const entries = spawnSync("tar", ["-tf", zip], { encoding: "utf8" });
+  assert.equal(entries.status, 0, entries.stderr);
+  assert.match(entries.stdout, /^vericto\.exe$/m);
   return zip;
 }
 

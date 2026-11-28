@@ -50,9 +50,15 @@ test("the installer is rendered with the version and every archive's SHA-256", (
   assert.equal(out.split(`"sha256" = "${"a".repeat(64)}"`).length - 1, 2); // x64 msvc + gnu
   assert.equal(out.split(`"sha256" = "${"b".repeat(64)}"`).length - 1, 2); // arm64 msvc + gnu
   assert.doesNotMatch(out, /@VERSION@|@SHA256:/);
-  // The check itself, before anything is unpacked.
+  // The check itself, before anything is unpacked. Anchored on the extraction
+  // call rather than on Expand-Archive: the .zip branch calls
+  // System.IO.Compression.ZipFile directly, so that Windows PowerShell cannot
+  // resolve the cmdlet to PowerShell 7's Microsoft.PowerShell.Archive (see the
+  // comment on that branch in windows/installer.ps1).
   const check = out.indexOf("Get-FileHash -Algorithm SHA256 -LiteralPath $dir_path");
-  assert.ok(check > 0 && check < out.indexOf("Expand-Archive -Path $dir_path"));
+  const unpack = out.indexOf("[System.IO.Compression.ZipFile]::ExtractToDirectory");
+  assert.ok(unpack > 0, "the .zip branch must unpack with ZipFile::ExtractToDirectory");
+  assert.ok(check > 0 && check < unpack);
   assert.match(out, /refusing to install an unverified binary/);
 });
 

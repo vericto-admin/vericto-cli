@@ -359,7 +359,18 @@ function Download($download_url, $platforms, $arch) {
   # forward all tars to it in case the user has a machine that can handle it!
   switch -Wildcard ($zip_ext) {
     ".zip" {
-      Expand-Archive -Path $dir_path -DestinationPath "$tmp";
+      # Not Expand-Archive: that cmdlet comes from Microsoft.PowerShell.Archive,
+      # and when this script runs in Windows PowerShell 5.1 with PowerShell 7's
+      # PSModulePath inherited (a `powershell.exe` launched from a pwsh session),
+      # 5.1 loads PowerShell 7's copy of the module. From version 1.2.7 of it its
+      # only extraction call is a three-argument ZipFileExtensions overload that
+      # does not exist on the .NET Framework 5.1 runs on, so the extraction fails
+      # while the script carries on with an empty directory. Calling the API here
+      # takes module resolution out of it on either edition.
+      if ($PSVersionTable.PSEdition -eq "Desktop") {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+      }
+      [System.IO.Compression.ZipFile]::ExtractToDirectory("$dir_path", "$tmp")
       Break
     }
     ".tar.*" {
@@ -374,6 +385,11 @@ function Download($download_url, $platforms, $arch) {
   # Let the next step know what to copy
   $bin_paths = @()
   foreach ($bin_name in $bin_names) {
+    # An extraction that writes nothing is reported here, rather than further on
+    # as a copy of a file that was never unpacked.
+    if (-not (Test-Path -LiteralPath "$tmp\$bin_name")) {
+      throw "ERROR: $artifact_name did not unpack $bin_name into $tmp"
+    }
     Write-Verbose "  Unpacked $bin_name"
     $bin_paths += "$tmp\$bin_name"
   }
